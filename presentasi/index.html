@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Giliranku — Presentasi proyek (10 slide)</title>
+<style>
+  :root{--dark:#151e29;--dark2:#1c2833;--ink:#1d2a36;--copy:#c0c9d1;--fine:#8995a1;
+        --mint:#31f2bf;--lime:#e4ff33;--cyan:#02b7f1;--mono:"IBM Plex Mono",ui-monospace,monospace;
+        --sans:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--dark);color:var(--copy);font-family:var(--sans);min-height:100vh}
+  header{display:flex;flex-wrap:wrap;gap:14px;align-items:center;justify-content:space-between;
+         padding:20px clamp(16px,4vw,44px);border-bottom:1px solid #26313e}
+  .brand{font-weight:800;font-size:20px;color:#fff;letter-spacing:-.02em}
+  .brand span{color:var(--mint)}
+  .sub{font-family:var(--mono);font-size:11px;color:var(--fine);letter-spacing:.14em;text-transform:uppercase;margin-top:4px}
+  .actions{display:flex;gap:10px;flex-wrap:wrap}
+  .btn{display:inline-block;text-decoration:none;font-family:var(--mono);font-size:12px;padding:10px 16px;
+       border-radius:8px;border:1px solid #33414f;color:var(--copy)}
+  .btn.primary{background:var(--mint);border-color:var(--mint);color:var(--dark);font-weight:700}
+  .btn:hover{filter:brightness(1.08)}
+  main{padding:26px clamp(12px,3vw,44px) 40px;max-width:1500px;margin:0 auto}
+  .stage{position:relative;background:#000;border:1px solid #2b3a48;border-radius:14px;overflow:hidden}
+  .stage img{display:block;width:100%;height:auto;cursor:pointer}
+  .bar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:14px;flex-wrap:wrap}
+  .nav{display:flex;gap:8px;align-items:center}
+  .nav button{background:var(--dark2);color:var(--copy);border:1px solid #33414f;border-radius:8px;
+              padding:10px 16px;font-family:var(--mono);font-size:13px;cursor:pointer}
+  .nav button:hover:not(:disabled){border-color:var(--mint);color:var(--mint)}
+  .nav button:disabled{opacity:.35;cursor:default}
+  #count{font-family:var(--mono);font-size:13px;color:var(--fine);min-width:86px;text-align:center}
+  .hint{font-family:var(--mono);font-size:11px;color:var(--fine)}
+  .thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-top:26px}
+  .thumbs button{padding:0;border:2px solid transparent;border-radius:10px;overflow:hidden;background:#000;cursor:pointer}
+  .thumbs button.active{border-color:var(--mint)}
+  .thumbs img{display:block;width:100%;height:auto}
+  .thumbs .n{display:block;font-family:var(--mono);font-size:10px;color:var(--fine);padding:6px;background:var(--dark2);text-align:left}
+  @media(max-width:640px){.hint{display:none}}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <div class="brand">Gili<span>ranku</span></div>
+    <div class="sub">Presentasi proyek · 10 slide · 16:9</div>
+  </div>
+  <div class="actions">
+    <a class="btn primary" href="GiliranKuBPJS.pptx" download>Unduh PPTX</a>
+    <a class="btn" href="GiliranKuBPJS.pdf" download>Unduh PDF</a>
+    <a class="btn" href="https://127.0.0.1:8090" onclick="this.href='http://'+location.hostname+':8090'">Buka aplikasi</a>
+  </div>
+</header>
+<main>
+  <div class="stage"><img id="slide" src="slides/slide-01.png" alt="Slide 1" title="Klik untuk slide berikutnya"></div>
+  <div class="bar">
+    <div class="nav">
+      <button id="prev">← Sebelumnya</button>
+      <span id="count">1 / 10</span>
+      <button id="next">Berikutnya →</button>
+    </div>
+    <div class="hint">panah kiri/kanan · klik gambar untuk maju</div>
+  </div>
+  <div class="thumbs" id="thumbs"></div>
+</main>
+<script>
+const N = 10, TITLES = ["Sampul","Masalah","Solusi","Cara kerja","Pengalaman pasien",
+  "Papan petugas","Admin, QR, audit","Keamanan & privasi","Bukti pengujian","Langkah berikutnya"];
+let i = 1;
+const img = document.getElementById('slide'), count = document.getElementById('count');
+const prev = document.getElementById('prev'), next = document.getElementById('next');
+const thumbs = document.getElementById('thumbs');
+const src = n => 'slides/slide-' + String(n).padStart(2,'0') + '.png';
+for (let n = 1; n <= N; n++) {
+  const b = document.createElement('button');
+  b.innerHTML = '<img loading="lazy" src="'+src(n)+'" alt=""><span class="n">'+String(n).padStart(2,'0')+' · '+TITLES[n-1]+'</span>';
+  b.onclick = () => go(n);
+  thumbs.appendChild(b);
+}
+function go(n) {
+  i = Math.min(N, Math.max(1, n));
+  img.src = src(i); img.alt = 'Slide ' + i + ' — ' + TITLES[i-1];
+  count.textContent = i + ' / ' + N;
+  prev.disabled = i === 1; next.disabled = i === N;
+  [...thumbs.children].forEach((b, k) => b.classList.toggle('active', k === i-1));
+  if (location.hash !== '#'+i) history.replaceState(null, '', '#'+i);
+}
+prev.onclick = () => go(i-1); next.onclick = () => go(i+1);
+img.onclick = () => go(i+1);
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') { e.preventDefault(); go(i+1); }
+  if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); go(i-1); }
+  if (e.key === 'Home') go(1); if (e.key === 'End') go(N);
+});
+go(parseInt(location.hash.slice(1)) || 1);
+</script>
+</body>
+</html>

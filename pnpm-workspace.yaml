@@ -1,0 +1,6 @@
+# Hoisted linker keeps node_modules flat (same as bikinPRD).
+nodeLinker: hoisted
+allowBuilds:
+  sharp: false
+  unrs-resolver: false
+  esbuild: false

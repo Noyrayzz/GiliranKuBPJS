@@ -1,0 +1,500 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>brag — GiliranKuBPJS</title>
+<style>
+  html, body { margin: 0; padding: 0; background: #000; }
+  canvas { display: block; }
+</style>
+</head>
+<body>
+<canvas id="c" width="1920" height="1080"></canvas>
+<script>
+// ---------------------------------------------------------------- konstanta
+const W = 1920, H = 1080;
+const DARK = '#151e29', INK = '#1d2a36', BODY = '#314352', MUTED = '#687887',
+      SUBTLE = '#657482', LIME = '#e4ff33', MINT = '#31f2bf', PANEL = '#f5f6f7',
+      EDGE = '#e1e5e9', MINT_WASH = '#effff9', DARK_COPY = '#c0c9d1', FINE = '#8995a1',
+      PROOF = '#fcffeb', OFFWHITE = '#fcfcfc';
+const RIBBON = ['#deff34', '#8cf97c', '#65f75f', '#12f0aa', '#45f4bc', '#33dfdf', '#01d3d8', '#02b7f1', '#34c8f4', '#02a7ff'];
+
+// batas adegan (detik)
+const S1 = 0.00, S2 = 2.60, S3 = 6.20, S4 = 10.20, S5 = 14.60, S6 = 18.20, END = 22.00;
+
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+
+// ---------------------------------------------------------------- bantu
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const easeOut = x => 1 - Math.pow(1 - x, 3);
+const easeIn = x => x * x * x;
+const easeInOut = x => x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+const easeOutBack = x => 1 + 2.2 * Math.pow(x - 1, 3) + 1.4 * Math.pow(x - 1, 2);
+// kemajuan segmen: 0 sebelum a, 1 sesudah a+d
+const seg = (t, a, d) => clamp((t - a) / d, 0, 1);
+
+// roundRect dengan radius yang dijepit: arcTo tidak menggambar apa pun bila r > h/2
+function rr(x, y, w, h, r) {
+  r = Math.min(r, Math.abs(w) / 2, Math.abs(h) / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.arcTo(x + w, y, x + w, y + r, r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
+  ctx.lineTo(x + r, y + h);
+  ctx.arcTo(x, y + h, x, y + h - r, r);
+  ctx.lineTo(x, y + r);
+  ctx.arcTo(x, y, x + r, y, r);
+  ctx.closePath();
+}
+
+function wrapLines(text, maxW, font) {
+  ctx.font = font;
+  const words = text.split(' ');
+  const lines = [];
+  let line = '';
+  for (const w of words) {
+    const test = line ? line + ' ' + w : w;
+    if (ctx.measureText(test).width > maxW && line) { lines.push(line); line = w; }
+    else line = test;
+  }
+  if (line) lines.push(line);
+  return lines;
+}
+
+// teks dengan pembungkusan manual; fillText tidak membungkus sendiri
+function para(text, x, y, maxW, { font, color, lh, alpha = 1 }) {
+  const lines = wrapLines(text, maxW, font);
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.font = font; ctx.fillStyle = color; ctx.textBaseline = 'alphabetic';
+  lines.forEach((ln, i) => ctx.fillText(ln, x, y + i * lh));
+  ctx.restore();
+  return lines.length * lh;
+}
+
+function mono(text, x, y, size, color, { track = 2, alpha = 1, align = 'left', weight = '400' } = {}) {
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.font = `${weight} ${size}px "PlexMono"`;
+  ctx.fillStyle = color; ctx.textBaseline = 'alphabetic'; ctx.textAlign = align;
+  if (track === 0) { ctx.fillText(text, x, y); }
+  else {
+    let cx = x;
+    const chars = [...text];
+    if (align === 'center') {
+      const totalW = chars.reduce((a, c) => a + ctx.measureText(c).width + track, 0) - track;
+      cx = x - totalW / 2;
+    } else if (align === 'right') {
+      const totalW = chars.reduce((a, c) => a + ctx.measureText(c).width + track, 0) - track;
+      cx = x - totalW;
+    }
+    ctx.textAlign = 'left';
+    for (const c of chars) { ctx.fillText(c, cx, y); cx += ctx.measureText(c).width + track; }
+  }
+  ctx.restore();
+}
+
+// pita folded-spectrum: lempeng miring 20° yang naik ke kanan
+function ribbon(t, { ox, oy, step = 186, slabW = 196, slabH = 560, skew = 0.364, stagger = 0.075, t0 = 0, alpha = 1, dir = 1 }) {
+  const n = RIBBON.length;
+  for (let i = 0; i < n; i++) {
+    const p = easeOut(seg(t, t0 + i * stagger, 0.55));
+    if (p <= 0) continue;
+    const off = (1 - p) * 200 * dir;
+    const x = ox + i * step + off, y = oy - i * step * 0.52;
+    const h = slabH, w = slabW, s = h * skew;
+    ctx.save();
+    ctx.globalAlpha = alpha * (0.92 - i * 0.02);
+    ctx.fillStyle = RIBBON[i];
+    ctx.beginPath();
+    ctx.moveTo(x, y + h);          // kiri bawah
+    ctx.lineTo(x + w, y + h);      // kanan bawah
+    ctx.lineTo(x + w + s, y);      // kanan atas (miring 20°)
+    ctx.lineTo(x + s, y);          // kiri atas
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
+// butir halus: ubin noise dengan pola tetap
+let grainTile = null;
+function makeGrain() {
+  const c = document.createElement('canvas');
+  c.width = c.height = 220;
+  const g = c.getContext('2d');
+  const img = g.createImageData(220, 220);
+  let seed = 12345;
+  const rnd = () => (seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
+  for (let i = 0; i < img.data.length; i += 4) {
+    const v = 128 + (rnd() - 0.5) * 255 * 0.5;
+    img.data[i] = img.data[i + 1] = img.data[i + 2] = v;
+    img.data[i + 3] = 255;
+  }
+  g.putImageData(img, 0, 0);
+  grainTile = ctx.createPattern(c, 'repeat');
+}
+function grain(alpha = 0.045) {
+  ctx.save();
+  ctx.globalCompositeOperation = 'overlay';
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = grainTile;
+  ctx.fillRect(0, 0, W, H);
+  ctx.restore();
+}
+function vignette(strength = 0.42) {
+  ctx.save();
+  ctx.translate(W / 2, H / 2);
+  ctx.scale(W / 2, H / 2);
+  const g = ctx.createRadialGradient(0, 0, 0.25, 0, 0, 1.05);
+  g.addColorStop(0, 'rgba(0,0,0,0)');
+  g.addColorStop(1, `rgba(0,0,0,${strength})`);
+  ctx.fillStyle = g;
+  ctx.fillRect(-1, -1, 2, 2);
+  ctx.restore();
+}
+
+// ponsel: bingkai gelap + layar (tangkapan layar asli)
+function phone(img, x, y, sw, h, { alpha = 1, radius = 44 } = {}) {
+  const pad = 16;
+  const sh = sw * (img.height / img.width);
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  // bayangan
+  ctx.shadowColor = 'rgba(12,25,39,0.30)';
+  ctx.shadowBlur = 60; ctx.shadowOffsetY = 26;
+  ctx.fillStyle = DARK;
+  rr(x - pad, y - pad, sw + pad * 2, sh + pad * 2, radius + pad);
+  ctx.fill();
+  ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+  // layar
+  ctx.save();
+  rr(x, y, sw, sh, radius);
+  ctx.clip();
+  ctx.drawImage(img, x, y, sw, sh);
+  ctx.restore();
+  // garis tepi layar
+  ctx.strokeStyle = 'rgba(255,255,255,0.10)';
+  ctx.lineWidth = 2;
+  rr(x, y, sw, sh, radius);
+  ctx.stroke();
+  ctx.restore();
+  return { w: sw, h: sh, x, y };
+}
+
+// kursor + riak klik
+function cursor(x, y, alpha = 1, s = 1) {
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.translate(x, y); ctx.scale(s, s);
+  ctx.shadowColor = 'rgba(9,17,26,0.45)'; ctx.shadowBlur = 14; ctx.shadowOffsetY = 5;
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath();
+  ctx.moveTo(0, 0); ctx.lineTo(0, 34); ctx.lineTo(9, 26); ctx.lineTo(15, 40);
+  ctx.lineTo(23, 37); ctx.lineTo(17, 23); ctx.lineTo(28, 22);
+  ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = 'rgba(29,42,54,0.85)'; ctx.lineWidth = 2.2; ctx.stroke();
+  ctx.restore();
+}
+function ripple(x, y, p) {
+  if (p <= 0 || p >= 1) return;
+  ctx.save();
+  ctx.globalAlpha = (1 - p) * 0.75;
+  ctx.strokeStyle = MINT; ctx.lineWidth = 4 * (1 - p) + 1;
+  ctx.beginPath(); ctx.arc(x, y, 12 + 52 * easeOut(p), 0, Math.PI * 2); ctx.stroke();
+  ctx.restore();
+}
+
+// ---------------------------------------------------------------- gambar
+const IMG = {};
+const SRC = {
+  hero: 'work/shots/home_hero.png',
+  daftar: 'work/shots/daftar_filled.png',
+  tiket: 'work/shots/tiket_near.png',
+  pickup: 'work/shots/tiket_pickup.png',
+  board: 'work/shots/board_poli.png',
+  audit: 'work/shots/admin_audit.png',
+  qr: 'work/shots/qr.png',
+};
+function loadImage(src) {
+  return new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => rej(new Error('gagal memuat ' + src)); im.src = src; });
+}
+async function boot() {
+  try {
+    const inter = new FontFace('InterVar', 'url(work/fonts/inter-latin-wght-normal.woff2)', { weight: '100 900' });
+    const plex = new FontFace('PlexMono', 'url(work/fonts/ibm-plex-mono-latin-400-normal.woff2)', { weight: '400' });
+    await inter.load(); await plex.load();
+    document.fonts.add(inter); document.fonts.add(plex);
+    await document.fonts.ready;
+    for (const [k, src] of Object.entries(SRC)) IMG[k] = await loadImage(src);
+    makeGrain();
+    window.renderAt(0);
+    window.__ready = true;
+  } catch (e) { window.__error = String(e && e.message || e); }
+}
+const SANS = (w, size) => `${w} ${size}px InterVar`;
+const MONO = '400 22px PlexMono';
+
+// ---------------------------------------------------------------- adegan
+function sceneHook(t) {
+  // latar gelap + pita merek
+  const g = ctx.createLinearGradient(0, 0, W, H);
+  g.addColorStop(0, '#101a24'); g.addColorStop(1, DARK);
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  ribbon(t, { ox: 1180, oy: 300, t0: S1 + 0.05, alpha: 0.95 });
+  // bidang gelap di kiri agar teks selalu terbaca
+  const scrim = ctx.createLinearGradient(0, 0, 1250, 0);
+  scrim.addColorStop(0, 'rgba(16,26,36,0.92)');
+  scrim.addColorStop(1, 'rgba(16,26,36,0)');
+  ctx.fillStyle = scrim; ctx.fillRect(0, 0, 1250, H);
+
+  const p1 = easeOut(seg(t, S1 + 0.10, 0.55));
+  const p2 = easeOut(seg(t, S1 + 0.62, 0.55));
+  const p3 = easeOut(seg(t, S1 + 1.45, 0.50));
+
+  mono('TIKET ANTREAN BPJS', 140, 316 + (1 - p1) * 18, 22, LIME, { track: 4, alpha: p1 });
+  ctx.save();
+  ctx.globalAlpha = p2;
+  ctx.font = SANS(800, 104); ctx.fillStyle = '#ffffff'; ctx.textBaseline = 'alphabetic';
+  ctx.fillText('Satu tiket.', 140, 452 + (1 - p2) * 26);
+  ctx.restore();
+  ctx.save();
+  ctx.globalAlpha = p3;
+  ctx.font = SANS(800, 104); ctx.fillStyle = MINT;
+  ctx.fillText('Tiga meja.', 140, 574 + (1 - p3) * 26);
+  ctx.restore();
+  mono('PENDAFTARAN   →   POLI   →   FARMASI', 140, 668, 24, DARK_COPY, { track: 3, alpha: easeOut(seg(t, S1 + 1.9, 0.5)) });
+  grain(0.05); vignette(0.5);
+}
+
+function sceneTicket(t) {
+  const lt = t - S2;
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, W, H);
+  // panel pucat kanan
+  ctx.fillStyle = PANEL; ctx.fillRect(1000, 0, W - 1000, H);
+  ctx.fillStyle = 'rgba(49,242,191,0.10)';
+  ctx.beginPath(); ctx.arc(1560, 200, 320, 0, Math.PI * 2); ctx.fill();
+
+  const rise = easeOut(seg(lt, 0.10, 0.85));
+  const p = easeOut(seg(lt, 0.05, 0.55));
+  const ph = phone(IMG.tiket, 1210, 120 + (1 - rise) * 90, 380, 0, { alpha: rise });
+
+  mono('01 — TIKET PASIEN', 140, 300 + (1 - p) * 16, 20, MUTED, { track: 4, alpha: p });
+  ctx.save(); ctx.globalAlpha = easeOut(seg(lt, 0.25, 0.6));
+  ctx.font = SANS(800, 62); ctx.fillStyle = INK;
+  ctx.fillText('Pasien tahu', 140, 396);
+  ctx.fillText('posisinya.', 140, 470);
+  ctx.restore();
+  const pb = para('Posisi antrean, perkiraan waktu tunggu, dan status tiap tahap terbaca dari satu tautan.',
+    140, 546, 720, { font: '400 30px InterVar', color: BODY, lh: 44, alpha: easeOut(seg(lt, 0.55, 0.6)) });
+  // chip mono
+  const pc = easeOut(seg(lt, 0.95, 0.5));
+  if (pc > 0) {
+    ctx.save(); ctx.globalAlpha = pc;
+    rr(140, 546 + pb + 26, 330, 60, 12); ctx.fillStyle = MINT_WASH; ctx.fill();
+    ctx.strokeStyle = 'rgba(49,242,191,0.65)'; ctx.lineWidth = 2; ctx.stroke();
+    ctx.restore();
+    mono('SINKRON ≤ 8 DETIK', 168, 546 + pb + 64, 20, '#0f6b53', { track: 2, alpha: pc });
+  }
+  vignette(0.06);
+}
+
+function sceneDaftar(t) {
+  const lt = t - S3;
+  ctx.fillStyle = OFFWHITE; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = PANEL; ctx.fillRect(0, 0, 900, H);
+  ctx.fillStyle = 'rgba(228,255,51,0.16)';
+  ctx.beginPath(); ctx.arc(760, 880, 300, 0, Math.PI * 2); ctx.fill();
+
+  const rise = easeOut(seg(lt, 0.10, 0.85));
+  phone(IMG.daftar, 258, 110 + (1 - rise) * 90, 380, 0, { alpha: rise });
+
+  const p = easeOut(seg(lt, 0.20, 0.55));
+  mono('02 — PENDAFTARAN', 1010, 300 + (1 - p) * 16, 20, MUTED, { track: 4, alpha: p });
+  ctx.save(); ctx.globalAlpha = easeOut(seg(lt, 0.40, 0.6));
+  ctx.font = SANS(800, 58); ctx.fillStyle = INK;
+  ctx.fillText('Daftar dari web,', 1010, 392);
+  ctx.fillText('atau pindai QR', 1010, 464);
+  ctx.fillText('di poli.', 1010, 536);
+  ctx.restore();
+  para('Tanpa memasang aplikasi. Identitas diambil dari KTP atau KK, nomor rekam medis diisi di loket.',
+    1010, 612, 700, { font: '400 30px InterVar', color: BODY, lh: 44, alpha: easeOut(seg(lt, 0.70, 0.6)) });
+
+  // kartu QR
+  const pq = easeOutBack(seg(lt, 2.05, 0.6));
+  if (pq > 0.01) {
+    ctx.save();
+    const cx = 1010 + (1 - pq) * 60, cy = 760;
+    ctx.globalAlpha = clamp(pq, 0, 1);
+    ctx.shadowColor = 'rgba(12,25,39,0.10)'; ctx.shadowBlur = 26; ctx.shadowOffsetY = 8;
+    ctx.fillStyle = '#ffffff'; rr(cx, cy, 236, 236, 16); ctx.fill();
+    ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+    ctx.drawImage(IMG.qr, cx + 18, cy + 18, 200, 200);
+    ctx.strokeStyle = EDGE; ctx.lineWidth = 2; rr(cx, cy, 236, 236, 16); ctx.stroke();
+    ctx.restore();
+    mono('QR POLI-DALAM', 1272, 812, 20, MUTED, { track: 2, alpha: clamp(pq, 0, 1) });
+    para('Tiket terbit dengan nomor harian per unit.', 1272, 856, 500,
+      { font: '400 26px InterVar', color: SUBTLE, lh: 36, alpha: clamp(pq, 0, 1) });
+  }
+  vignette(0.05);
+}
+
+function scenePetugas(t) {
+  const lt = t - S4;
+  const g = ctx.createLinearGradient(0, 0, W, H);
+  g.addColorStop(0, DARK); g.addColorStop(1, '#101a24');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+
+  // bingkai peramban dengan papan petugas
+  const enter = easeInOut(seg(lt, 0.05, 0.75));
+  const fw = 1120, fh = 700, fx = 740 + (1 - enter) * 120, fy = 210;
+  ctx.save();
+  ctx.globalAlpha = enter;
+  ctx.shadowColor = 'rgba(0,0,0,0.45)'; ctx.shadowBlur = 50; ctx.shadowOffsetY = 22;
+  ctx.fillStyle = '#f2f4f6';
+  rr(fx, fy - 42, fw, fh + 42, 14); ctx.fill();
+  ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+  // bilah peramban
+  ctx.fillStyle = '#e3e8ec'; rr(fx, fy - 42, fw, 42, 14); ctx.fill();
+  ctx.fillStyle = '#cdd6dc';
+  for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.arc(fx + 22 + i * 22, fy - 21, 6, 0, Math.PI * 2); ctx.fill(); }
+  ctx.fillStyle = '#ffffff'; rr(fx + 96, fy - 34, fw - 130, 26, 8); ctx.fill();
+  mono('127.0.0.1:8090/petugas', fx + 108, fy - 16, 14, SUBTLE, { track: 0 });
+  // layar
+  ctx.save(); rr(fx, fy, fw, fh, 0); ctx.clip();
+  ctx.drawImage(IMG.board, fx, fy, fw, fh);
+  ctx.restore();
+  ctx.restore();
+
+  // koordinat tombol "Panggil berikutnya" pada tangkapan 1440×900 (diukur dari DOM: 183,361 315×46)
+  const sx = fw / 1440, sy = fh / 900;
+  const bx = fx + 183 * sx, by = fy + 361 * sy, bw = 315 * sx, bh = 46 * sy;
+  const pcx = bx + bw / 2, pcy = by + bh / 2;
+
+  // sorotan tombol + kursor
+  const hl = easeOut(seg(lt, 0.85, 0.5));
+  if (hl > 0) {
+    ctx.save(); ctx.globalAlpha = hl * enter;
+    ctx.strokeStyle = MINT; ctx.lineWidth = 3;
+    rr(bx - 6, by - 6, bw + 12, bh + 12, 12); ctx.stroke();
+    ctx.restore();
+  }
+  const cm = easeInOut(seg(lt, 1.05, 0.85));
+  if (cm > 0) {
+    const cx = pcx + (1 - cm) * 260 - 40 * cm, cy = pcy + (1 - cm) * 300 + 18 * cm;
+    cursor(cx, cy, enter, 1.05);
+  }
+  ripple(pcx, pcy, seg(lt, 1.95, 0.7));
+
+  // chip status
+  const chip = easeOutBack(seg(lt, 2.10, 0.55));
+  if (chip > 0.01) {
+    ctx.save(); ctx.globalAlpha = clamp(chip, 0, 1);
+    const cw = 470, ch = 64, cxx = fx + 40, cyy = fy + fh - ch - 36;
+    ctx.fillStyle = 'rgba(21,30,41,0.92)'; rr(cxx, cyy, cw, ch, 12); ctx.fill();
+    ctx.strokeStyle = 'rgba(49,242,191,0.55)'; ctx.lineWidth = 2; ctx.stroke();
+    ctx.restore();
+    mono('A-008 · DIPANGGIL', cxx + 26, cyy + 41, 22, MINT, { track: 2, alpha: clamp(chip, 0, 1) });
+  }
+
+  // teks kiri
+  const p = easeOut(seg(lt, 0.30, 0.55));
+  mono('03 — PETUGAS', 120, 322 + (1 - p) * 16, 20, LIME, { track: 4, alpha: p });
+  ctx.save(); ctx.globalAlpha = easeOut(seg(lt, 0.45, 0.6));
+  ctx.font = SANS(800, 62); ctx.fillStyle = '#ffffff';
+  ctx.fillText('Petugas', 120, 414);
+  ctx.fillText('memanggil', 120, 486);
+  ctx.fillStyle = MINT; ctx.fillText('berikutnya.', 120, 558);
+  ctx.restore();
+  para('Panggil, mulai, selesai — setiap aksi tercatat atas nama petugas beserta waktunya.',
+    120, 640, 520, { font: '400 26px InterVar', color: DARK_COPY, lh: 38, alpha: easeOut(seg(lt, 0.75, 0.6)) });
+  grain(0.05); vignette(0.45);
+}
+
+function sceneFarmasi(t) {
+  const lt = t - S5;
+  ctx.fillStyle = MINT_WASH; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath(); ctx.arc(380, 880, 460, 0, Math.PI * 2); ctx.fill();
+
+  const zoom = easeInOut(seg(lt, 0.15, 2.4));
+  const scale = 1 + zoom * 0.34;
+  const sw = 380 * scale;
+  const px = 1180 - (sw - 380) / 2, py = 120 - zoom * 40;
+  ctx.save();
+  ctx.globalAlpha = easeOut(seg(lt, 0.05, 0.6));
+  phone(IMG.pickup, px, py, sw, 0);
+  ctx.restore();
+
+  const p = easeOut(seg(lt, 0.25, 0.55));
+  mono('04 — FARMASI', 140, 322 + (1 - p) * 16, 20, '#0f6b53', { track: 4, alpha: p });
+  ctx.save(); ctx.globalAlpha = easeOut(seg(lt, 0.40, 0.6));
+  ctx.font = SANS(800, 62); ctx.fillStyle = INK;
+  ctx.fillText('Obat siap', 140, 424);
+  ctx.fillText('diambil.', 140, 496);
+  ctx.restore();
+  para('Notifikasi muncul di tiket. Pasien datang saat obat benar-benar siap, bukan menunggu di depan loket.',
+    140, 580, 660, { font: '400 30px InterVar', color: BODY, lh: 44, alpha: easeOut(seg(lt, 0.70, 0.6)) });
+  const pbar = easeOut(seg(lt, 1.3, 0.6));
+  if (pbar > 0) {
+    ctx.save(); ctx.globalAlpha = pbar;
+    ctx.fillStyle = LIME; rr(140, 730, 300, 10, 5); ctx.fill();
+    ctx.restore();
+    mono('SIAP DIAMBIL', 140, 782, 22, '#0f6b53', { track: 3, alpha: pbar });
+  }
+  vignette(0.05);
+}
+
+function sceneOutro(t) {
+  const lt = t - S6;
+  const g = ctx.createLinearGradient(0, 0, W, H);
+  g.addColorStop(0, '#101a24'); g.addColorStop(1, DARK);
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  ribbon(t, { ox: 1180, oy: 340, t0: S6 + 0.05, stagger: 0.09, alpha: 0.9 });
+
+  const scrim = ctx.createLinearGradient(0, 0, 1250, 0);
+  scrim.addColorStop(0, 'rgba(16,26,36,0.92)');
+  scrim.addColorStop(1, 'rgba(16,26,36,0)');
+  ctx.fillStyle = scrim; ctx.fillRect(0, 0, 1250, H);
+
+  const p1 = easeOut(seg(lt, 0.15, 0.6));
+  const p2 = easeOut(seg(lt, 0.55, 0.6));
+  const p3 = easeOut(seg(lt, 1.05, 0.6));
+  // tanda pita kecil di samping wordmark (sejajar garis kapital, bukan kotak)
+  ctx.save(); ctx.globalAlpha = p1;
+  ctx.fillStyle = LIME; ctx.fillRect(140, 372, 16, 96);
+  ctx.fillStyle = MINT; ctx.fillRect(170, 372, 16, 96);
+  ctx.restore();
+  ctx.save(); ctx.globalAlpha = p1;
+  ctx.font = SANS(800, 78); ctx.fillStyle = '#ffffff';
+  ctx.fillText('Giliranku', 222, 468 + (1 - p1) * 20);
+  ctx.restore();
+  ctx.save(); ctx.globalAlpha = p2;
+  ctx.font = SANS(500, 34); ctx.fillStyle = DARK_COPY;
+  ctx.fillText('Tiket antrean BPJS, tanpa aplikasi.', 140, 556);
+  ctx.restore();
+  mono('127.0.0.1:8090  ·  DATA DEMO TIRUAN', 140, 640, 20, FINE, { track: 3, alpha: p3 });
+  grain(0.05); vignette(0.5);
+}
+
+// ---------------------------------------------------------------- render
+window.renderAt = function (t) {
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+  ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+  if (t < S2) sceneHook(t);
+  else if (t < S3) sceneTicket(t);
+  else if (t < S4) sceneDaftar(t);
+  else if (t < S5) scenePetugas(t);
+  else if (t < S6) sceneFarmasi(t);
+  else sceneOutro(t);
+};
+window.__ready = false;
+window.__error = null;
+boot();
+</script>
+</body>
+</html>

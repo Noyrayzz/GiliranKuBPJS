@@ -1,0 +1,3 @@
+Satu tiket untuk pendaftaran, poli, dan farmasi — pasien lihat posisi antrean dan status obatnya dari satu tautan, tanpa memasang aplikasi.
+Semua yang tampil di video ini adalah aplikasi yang benar-benar berjalan, dengan data demo tiruan.
+Tiket antrean untuk kunjungan BPJS rawat jalan: Giliranku.

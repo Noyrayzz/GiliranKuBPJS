@@ -1,0 +1,26 @@
+# dependensi & hasil build
+node_modules/
+.next/
+out/
+dist/
+coverage/
+tsconfig.tsbuildinfo
+
+# rahasia & konfigurasi lokal
+.env
+.env.local
+.env.*.local
+
+# data lokal
+data/*.db
+data/*.db-shm
+data/*.db-wal
+*.log
+
+# artefak alat (tangkapan frame, render sementara)
+brag-output/work/
+presentasi/render/
+presentasi/server.log
+
+# sistem
+.DS_Store

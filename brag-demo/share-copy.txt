@@ -1,0 +1,3 @@
+32 detik tanpa narasi: pasien mendaftar dari web, petugas memanggil dan menyelesaikan, poli dan farmasi memproses tiket yang sama sampai obat siap diambil.
+Semua klik, ketikan, dan perubahan status terekam dari aplikasi yang berjalan — data tiruan.
+Tiket antrean BPJS rawat jalan, tanpa memasang aplikasi.

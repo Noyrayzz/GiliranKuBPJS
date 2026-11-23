@@ -1,0 +1,37 @@
+[
+ {
+  "start": 0.12,
+  "end": 6.89,
+  "text": "Pasien mendaftar dari web"
+ },
+ {
+  "start": 7.03,
+  "end": 10.73,
+  "text": "Tiket terbit: posisi antrean dan status terbaca"
+ },
+ {
+  "start": 10.87,
+  "end": 16.13,
+  "text": "Petugas memanggil lalu menyelesaikan"
+ },
+ {
+  "start": 16.27,
+  "end": 18.56,
+  "text": "Status pasien ikut berubah"
+ },
+ {
+  "start": 18.7,
+  "end": 24.72,
+  "text": "Poli memproses tiket yang sama"
+ },
+ {
+  "start": 24.86,
+  "end": 30.02,
+  "text": "Farmasi menandai obat siap diambil"
+ },
+ {
+  "start": 30.16,
+  "end": 32.26,
+  "text": "Obat siap diambil"
+ }
+]
