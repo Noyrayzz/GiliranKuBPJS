@@ -4,14 +4,26 @@ Aplikasi web untuk kunjungan rawat jalan BPJS: satu tiket mengikuti pasien melal
 **pendaftaran → poli → farmasi**, dan pasien memantau status, posisi antrean, serta
 kesiapan obat dari satu tautan tanpa memasang aplikasi.
 
-PRD dan rencana proyek: `/home/kelvin/planning/giliranku-bpjs/.planning/PRD.md`.
+Dokumen PRD dan rencana proyek berada di folder perencanaan lokal (tidak disertakan
+di repositori ini); README ini merangkum keputusan yang sudah diimplementasikan.
+
+## Clone dari GitHub
+
+Repositori: <https://github.com/Noyrayzz/GiliranKuBPJS>
+
+```bash
+git clone git@github.com:Noyrayzz/GiliranKuBPJS.git        # lewat SSH
+# atau tanpa SSH key:
+git clone https://github.com/Noyrayzz/GiliranKuBPJS.git
+cd GiliranKuBPJS
+```
+
+Prasyarat: **Node 22**, **pnpm**, dan **Docker** (PostgreSQL 16 dijalankan lewat
+`docker-compose.yml`). Tidak perlu menyiapkan database manual.
 
 ## Menjalankan
 
-Prasyarat: Node 22 (`/home/kelvin/.local/opt/node22/bin`), pnpm, Docker.
-
 ```bash
-cd /home/kelvin/code/GiliranKuBPJS
 docker compose up -d db        # PostgreSQL 16 di 127.0.0.1:55432 (kontainer giliranku-db)
 pnpm install
 pnpm db:migrate                # idempoten: aman dijalankan berulang
