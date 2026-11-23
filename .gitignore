@@ -24,3 +24,6 @@ presentasi/server.log
 
 # sistem
 .DS_Store
+
+# profil peramban saat merekam (bisa berisi sesi)
+brag-demo/work/chrome-profile/
